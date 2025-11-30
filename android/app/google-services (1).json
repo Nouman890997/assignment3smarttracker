@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1094640888870",
+    "project_id": "smarttrackerassignment3-45df0",
+    "storage_bucket": "smarttrackerassignment3-45df0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1094640888870:android:16b55fec715446edbd8ae7",
+        "android_client_info": {
+          "package_name": "smarttrackerassignment3.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-S4vYD6BNlCBf-ZTVYnEFQI1Wjcfgt0Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

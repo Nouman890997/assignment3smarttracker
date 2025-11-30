@@ -1,0 +1,58 @@
+// android/app/build.gradle (MODULE LEVEL FILE)
+
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+
+    // Google Services plugin (for Firebase)
+    id("com.google.gms.google-services")
+}
+
+android {
+    // 💥 FIX: compileSdkVersion ko direct number se set karein
+    compileSdkVersion 34
+
+    // Namespace ko jaisa hai waise hi rehne dein
+    namespace = "com.example.assignment3smarttracker"
+
+    // NdkVersion ko bhi direct number ya string se set karein (optional cleanup)
+    ndkVersion "25.1.8937393" // Example NDK version
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        applicationId = "com.example.assignment3smarttracker"
+        // 💥 FIX: min/target SDK versions ko direct numbers se set karein (no 'flutter.' prefix)
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1 // Example
+        versionName "1.0" // Example
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
+
+    // Add specific Firebase dependencies
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-analytics")
+}
