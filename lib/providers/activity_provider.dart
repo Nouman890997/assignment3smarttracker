@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
-import '../models/activity_log.dart';
+import '../models/activity_model.dart'; // ✅ Importing the correct file
 
 class ActivityProvider with ChangeNotifier {
-  // Yeh list saari activities save karegi
-  final List<ActivityLog> _activities = [];
+  // ✅ Using ActivityModel instead of ActivityLog
+  final List<ActivityModel> _activities = [];
 
-  List<ActivityLog> get activities => _activities;
+  List<ActivityModel> get activities => _activities;
 
-  // Nayi activity add karne ka function
-  void addActivity(ActivityLog activity) {
+  void addActivity(ActivityModel activity) {
     _activities.add(activity);
-    notifyListeners(); // UI ko bataye ga ke update ho jao
+    notifyListeners();
+  }
+
+  // Optional: Function to clear list or set from API
+  void setActivities(List<ActivityModel> list) {
+    _activities.clear();
+    _activities.addAll(list);
+    notifyListeners();
   }
 }

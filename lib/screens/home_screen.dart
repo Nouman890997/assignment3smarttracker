@@ -1,12 +1,14 @@
-import 'dart:io'; // Image show karne ke liye
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:provider/provider.dart';
-import '../models/activity_log.dart';
-import '../providers/activity_provider.dart';
-import 'camera_screen.dart'; // Camera Screen import ki
+
+// ✅ IMPORTS
+import '../models/activity_model.dart';
+import '../repositories/activity_repository.dart';
+import 'camera_screen.dart';
+import 'history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,9 +18,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Default starting point (Islamabad)
   LatLng _currentLocation = const LatLng(33.6844, 73.0479);
   final MapController _mapController = MapController();
+
+  // Repository Instance
+  final ActivityRepository _repository = ActivityRepository();
+
   bool _isLoading = true;
+  // Note: _isUploading is not needed for instant save logic
 
   @override
   void initState() {
@@ -26,16 +34,19 @@ class _HomeScreenState extends State<HomeScreen> {
     _determinePosition();
   }
 
+  // --- LOCATION LOGIC ---
   Future<void> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
 
+    // 1. Check Service
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       setState(() => _isLoading = false);
       return;
     }
 
+    // 2. Check Permissions
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -47,50 +58,64 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       Position position = await Geolocator.getCurrentPosition();
+
       setState(() {
+        // ---------------------------------------------------------
+        // 👇 OPTION 1: REAL GPS (Use this for final submission)
         _currentLocation = LatLng(position.latitude, position.longitude);
+
+        // 👇 OPTION 2: FAKE LOCATION (Uncomment to test "moving" on Laptop)
+        // _currentLocation = const LatLng(33.7000, 73.0600);
+        // ---------------------------------------------------------
+
         _isLoading = false;
       });
+
+      // Move map to the new location
       _mapController.move(_currentLocation, 15.0);
+
     } catch (e) {
+      print("Error getting location: $e");
       setState(() => _isLoading = false);
     }
   }
 
-  // --- NEW: Function to Open Camera ---
+  // --- CAMERA LOGIC ---
   Future<void> _openCamera() async {
-    // 1. Camera Screen kholo aur Result ka intezar karo
     final imagePath = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CameraScreen()),
     );
 
-    // 2. Agar tasveer khainchi gayi hai
     if (imagePath != null && mounted) {
       _showSaveDialog(imagePath);
     }
   }
 
-  // --- NEW: Dialog to Save Activity ---
+  // --- INSTANT SAVE DIALOG (No Loading) ---
   void _showSaveDialog(String imagePath) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text("Log Activity?"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.file(File(imagePath), height: 150, fit: BoxFit.cover), // Show Image
+            Image.file(File(imagePath), height: 150, fit: BoxFit.cover),
             const SizedBox(height: 10),
             Text("Location: ${_currentLocation.latitude.toStringAsFixed(4)}, ${_currentLocation.longitude.toStringAsFixed(4)}"),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel")
+          ),
           ElevatedButton(
             onPressed: () {
-              // 3. Save to Provider (State Management)
-              final newActivity = ActivityLog(
+              // 1. Create Model Object
+              final newActivity = ActivityModel(
                 id: DateTime.now().toString(),
                 latitude: _currentLocation.latitude,
                 longitude: _currentLocation.longitude,
@@ -98,12 +123,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 timestamp: DateTime.now(),
               );
 
-              Provider.of<ActivityProvider>(context, listen: false).addActivity(newActivity);
+              // 2. ⚡ CLOSE DIALOG INSTANTLY (Do not wait for server)
+              Navigator.pop(ctx);
 
-              Navigator.pop(ctx); // Close Dialog
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Activity Logged Successfully!")));
+              // 3. Show a quick message so user knows it worked
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Saving in background... 🚀"),
+                  duration: Duration(seconds: 1), // Disappears quickly
+                ),
+              );
+
+              // 4. Send to server in Background (Fire & Forget)
+              _repository.uploadActivity(newActivity);
             },
-            child: const Text("Save"),
+            child: const Text("Save Immediately"),
           )
         ],
       ),
@@ -117,6 +151,17 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Smart Tracker'),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+              icon: const Icon(Icons.history),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                );
+              }
+          )
+        ],
       ),
       body: Stack(
         children: [
@@ -145,11 +190,10 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_isLoading) const Center(child: CircularProgressIndicator()),
         ],
       ),
-
-      // TWO BUTTONS (Location & Camera)
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          // GPS Button (Refreshes Location)
           FloatingActionButton(
             heroTag: "btn1",
             onPressed: _determinePosition,
@@ -157,9 +201,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Icon(Icons.my_location, color: Colors.indigo),
           ),
           const SizedBox(height: 16),
+          // Camera Button
           FloatingActionButton(
             heroTag: "btn2",
-            onPressed: _openCamera, // Camera kholne ka button
+            onPressed: _openCamera,
             backgroundColor: Colors.indigo,
             child: const Icon(Icons.camera_alt, color: Colors.white),
           ),
